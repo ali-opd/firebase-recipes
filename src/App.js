@@ -1,6 +1,6 @@
 import './App.scss';
 
-import firebase from './FirebaseConfig';
+// import firebase from './FirebaseConfig';
 
 function App() {
   return (
