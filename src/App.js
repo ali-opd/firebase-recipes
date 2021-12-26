@@ -158,11 +158,11 @@ function App() {
     setRecipesPerPage(recipesPerPage);
   };
 
-  const handleLoadMoreRecipesClick = () => {
-    const lastRecipe = recipes[recipes.length - 1];
-    const cursorId = lastRecipe.id;
-    handleFetchRecipes(cursorId);
-  };
+  // const handleLoadMoreRecipesClick = () => {
+  //   const lastRecipe = recipes[recipes.length - 1];
+  //   const cursorId = lastRecipe.id;
+  //   handleFetchRecipes(cursorId);
+  // };
 
   const handleFetchRecipes = async (cursorId = '') => {
     try {
