@@ -30,8 +30,8 @@ const validateRecipePostPut = (newRecipe) => {
     missingFields += 'category';
   }
 
-  if (!newRecipe.directions) {
-    missingFields += 'directions';
+  if (!newRecipe.direction) {
+    missingFields += 'direction';
   }
 
   if (newRecipe.isPublished !== true && newRecipe.isPublished !== false) {
@@ -58,7 +58,7 @@ const sanitizeRecipePostPut = (newRecipe) => {
 
   recipe.name = newRecipe.name;
   recipe.category = newRecipe.category;
-  recipe.directions = newRecipe.directions;
+  recipe.direction = newRecipe.direction;
   recipe.publishDate = new Date(newRecipe.publishDate * 1000);
   recipe.isPublished = newRecipe.isPublished;
   recipe.ingredients = newRecipe.ingredients;

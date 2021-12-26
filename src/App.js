@@ -5,6 +5,7 @@ import AddEditRecipeForm from './components/AddEditRecipeForm';
 
 import './App.scss';
 import FirebaseFirestoreService from './FirebaseFirestoreService';
+// import FirebaseFirestoreRestService from './FirebaseFirestoreRestService';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -14,6 +15,9 @@ function App() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [orderBy, setOrderBy] = useState('publishDateDesc');
   const [recipesPerPage, setRecipesPerPage] = useState(3);
+  const [isLastPage, setIsLastPage] = useState(false);
+  const [totalNumberOfPages, setTotalNumberOfPages] = useState(0);
+  const [currentPageNumber, setCurrentPageNumber] = useState(1);
 
   useEffect(() => {
     setIsloading(true);
@@ -27,7 +31,7 @@ function App() {
       })
       .finally(() => setIsloading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, categoryFilter, orderBy, recipesPerPage]);
+  }, [user, categoryFilter, orderBy, recipesPerPage, currentPageNumber]);
 
   const fetchRecipes = async (cursorId = '') => {
     const queries = [];
@@ -88,6 +92,57 @@ function App() {
       } else {
         fetchedRecipes = [...newRecipes];
       }
+
+      // const response = await FirebaseFirestoreRestService.readDocuments({
+      //   collection: 'recipes',
+      //   queries: queries,
+      //   orderByField: orderByField,
+      //   orderByDirection: orderByDirection,
+      //   perPage: recipesPerPage,
+      //   pageNumber: currentPageNumber
+      // });
+
+      if (response && response.documents) {
+        const totalNumberOfPages = Math.ceil(
+          response.recipeCount / recipesPerPage
+        );
+
+        setTotalNumberOfPages(totalNumberOfPages);
+
+        const nextPageQuery = {
+          collection: 'recipes',
+          queries: queries,
+          orderByField: orderByField,
+          orderByDirection: orderByDirection,
+          perPage: recipesPerPage,
+          pageNumber: currentPageNumber + 1
+        };
+
+        const nextPageResponse = await FirebaseFirestoreService.readDocuments(
+          nextPageQuery
+        );
+
+        if (
+          nextPageResponse &&
+          nextPageResponse.documents &&
+          nextPageResponse.documents.length === 0
+        ) {
+          setIsLastPage(true);
+        } else {
+          setIsLastPage(false);
+        }
+
+        if (response.documents.length === 0 && currentPageNumber !== 1) {
+          setCurrentPageNumber(currentPageNumber - 1);
+        }
+
+        fetchedRecipes = response.documents;
+
+        fetchedRecipes.forEach((recipe) => {
+          const unixPublishDateTime = recipe.publishDate;
+          recipe.publishDate = new Date(unixPublishDateTime * 1000);
+        });
+      }
     } catch (error) {
       console.log(error.message);
       throw error;
@@ -128,6 +183,11 @@ function App() {
         newRecipe
       );
 
+      // const response = await FirebaseFirestoreRestService.createDocument(
+      //   'recipes',
+      //   newRecipe
+      // );
+
       // TODO: fetch new recipes from firestore
       handleFetchRecipes();
 
@@ -150,23 +210,23 @@ function App() {
     return label;
   };
 
-  const formatDate = (date) => {
-    const day = date.getUTCDate();
-    const month = date.getUTCMonth();
-    const year = date.getFullYear();
-    const dateString = `${month}-${day}-${year}`;
-    return dateString;
-  };
-
-  // const options = {
-  //   weekday: 'long',
-  //   year: 'numeric',
-  //   month: 'long',
-  //   day: 'numeric',
-  //   hour: 'numeric',
-  //   minute: 'numeric',
-  //   timeZoneName: 'short'
+  // const formatDate = (date) => {
+  //   const day = date.getUTCDate();
+  //   const month = date.getUTCMonth();
+  //   const year = date.getFullYear();
+  //   const dateString = `${month}-${day}-${year}`;
+  //   return dateString;
   // };
+
+  const options = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    timeZoneName: 'short'
+  };
 
   const handleUpdateRecipe = async (newRecipe, recipeId) => {
     try {
@@ -175,6 +235,12 @@ function App() {
         recipeId,
         newRecipe
       );
+
+      // await FirebaseFirestoreRestService.updateDocument(
+      //   'recipes',
+      //   recipeId,
+      //   newRecipe
+      // );
 
       handleFetchRecipes();
 
@@ -208,6 +274,7 @@ function App() {
     if (deleteConfirmation) {
       try {
         await FirebaseFirestoreService.deleteDocument('recipes', recipeId);
+        // await FirebaseFirestoreRestService.deleteDocument('recipes', recipeId);
         handleFetchRecipes();
         setCurrentRecipe(null);
         window.scrollTo(0, 0);
@@ -300,9 +367,9 @@ function App() {
                       Category: {lookupCategoryLabel(recipe.category)}
                     </div>
                     <div className='recipe-field'>
-                      Publish Date: {formatDate(recipe.publishDate)}
-                      {/* Publish Date:{' '}
-                      {recipe.publishDate.toLocaleDateString('id-ID', options)} */}
+                      {/* Publish Date: {formatDate(recipe.publishDate)} */}
+                      Publish Date:{' '}
+                      {recipe.publishDate.toLocaleDateString('id-ID', options)}
                     </div>
                     {user && (
                       <button
@@ -334,12 +401,57 @@ function App() {
               </select>
             </label>
             <div className='pagination'>
-              <button
+              {/* <button
                 className='primary-button'
                 onClick={handleLoadMoreRecipesClick}
               >
                 LOAD MORE RECIPES
-              </button>
+              </button> */}
+
+              <div className='row'>
+                <button
+                  className={
+                    currentPageNumber === 1
+                      ? 'primary-button hidden'
+                      : 'primary-button'
+                  }
+                  type='button'
+                  onClick={() => setCurrentPageNumber(currentPageNumber - 1)}
+                >
+                  Previous
+                </button>
+                <div>Page {currentPageNumber}</div>
+                <button
+                  className={
+                    isLastPage ? 'primary-button hidden' : 'primary-button'
+                  }
+                  type='button'
+                  onClick={() => setCurrentPageNumber(currentPageNumber + 1)}
+                >
+                  Next
+                </button>
+              </div>
+              <div className='row'>
+                {!categoryFilter
+                  ? new Array(totalNumberOfPages)
+                      .fill(0)
+                      .map((value, index) => {
+                        return (
+                          <button
+                            key={index}
+                            className={
+                              currentPageNumber === index + 1
+                                ? 'selected-page primary-button page-button'
+                                : 'primary-button page-button'
+                            }
+                            onClick={() => setCurrentPageNumber(index + 1)}
+                          >
+                            {index + 1}
+                          </button>
+                        );
+                      })
+                  : null}
+              </div>
             </div>
           </>
         ) : null}
